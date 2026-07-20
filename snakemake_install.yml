@@ -1,0 +1,20 @@
+# Install Snakemake Environment
+# ---------------------------
+# To create snakemake env:
+#   conda env create -f snakemake_install.yml -n snakemake
+#
+# To update the snakemake after adding new packages:
+#   conda env update -f snakemake_install.yml -n snakemake
+
+name: snakemake
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.12
+  - pyyaml
+  - pandas
+  - snakemake
+  - biopython
+# this is a snakemake portable env setup for newly installed 
