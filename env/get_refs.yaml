@@ -1,0 +1,14 @@
+name: get_refs
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python>=3.9
+  - wget
+  - unzip
+  - gzip
+  - pandas
+  - gffread
+  - samtools
+  - ncbi-datasets-cli
