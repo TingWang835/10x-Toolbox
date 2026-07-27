@@ -33,7 +33,7 @@ rule download_ncbi_refs:
         fasta = f"{REFS_DIR}/{acc}.raw.fa", 
         gff   = f"{REFS_DIR}/{acc}.raw.gff3" 
     conda: "../env/get_refs.yaml" 
-    log: f"{LOG_DIR}/getdata/download_ncbi_ref.log" 
+    log: f"{LOG_DIR}/get_refs/download_ncbi_ref.log" 
     shell:
         """
         mkdir -p {REFS_DIR} 
@@ -62,7 +62,7 @@ rule download_ensembl_refs:
     output:
         fasta = f"{REFS_DIR}/{species_cap}.{assembly}.{release}.raw.fa",
         gff   = f"{REFS_DIR}/{species_cap}.{assembly}.{release}.raw.gff3"
-    log: f"{LOG_DIR}/getdata/download_ensembl_ref.log"
+    log: f"{LOG_DIR}/get_refs/download_ensembl_ref.log"
     conda: "../env/get_refs.yaml"
     params:
         url_base = f"ftp://ftp.ensemblgenomes.org/pub/metazoa/release-{release}" if species_low == "caenorhabditis_elegans" else f"ftp://ftp.ensembl.org/pub/release-{release}"
@@ -90,7 +90,7 @@ rule uscs_translator:
     params:
         mapping = get_ucsc_mapping(species_low)
     log:
-        f"{LOG_DIR}/refs/uscs_translator.log"
+        f"{LOG_DIR}/get_refs/uscs_translator.log"
     run:
         import os
         
@@ -136,7 +136,7 @@ rule gff_to_gtf:
         gff = lambda wildcards: get_refs(wildcards)["gff"]
     output:
         gtf = f"{REFS_DIR}/{species_cap}.{assembly}.{release}.gtf" if source == "ensembl" else f"{REFS_DIR}/{acc}.gtf"
-    log: f"{LOG_DIR}/getdata/gff_to_gtf.log"
+    log: f"{LOG_DIR}/get_refs/gff_to_gtf.log"
     conda: "../env/get_refs.yaml"
     shell:
         """
@@ -150,9 +150,36 @@ rule samtools_faidx:
         fasta = lambda wildcards: get_refs(wildcards)["fasta"]
     output:
         fai = f"{REFS_DIR}/{species_cap}.{assembly}.{release}.fa.fai" if source == "ensembl" else f"{REFS_DIR}/{acc}.fa.fai"
-    log: f"{LOG_DIR}/getdata/samtools_faidx.log"
+    log: f"{LOG_DIR}/get_refs/samtools_faidx.log"
     conda: "../env/get_refs.yaml"
     shell:
         """
         samtools faidx {input.fasta} > {log} 2>&1
+        """
+
+checkpoint fetch_sra_metadata:
+    """
+    Fetches SRA runinfo CSV using NCBI Entrez Direct (esearch + efetch).
+    """
+    output:
+        csv = f"{READS_DIR}/runinfo.csv"
+    log:
+        f"{LOG_DIR}/getdata/fetch_sra_metadata.log"
+    conda:
+        "../env/get_refs.yaml"
+    params:
+        prj = config.get("PRJNUMBER")
+    shell:
+        """
+        exec 2> {log}
+        mkdir -p {READS_DIR}
+        mkdir -p $(dirname {log})
+
+        # Fetch SRA runinfo directly in CSV format
+        esearch -db sra -query "{params.prj}" | efetch -format runinfo > {READS_DIR}/raw_runinfo.csv
+
+        # Remove empty lines or header collisions if any
+        head -n 1 {READS_DIR}/raw_runinfo.csv > {output.csv}
+        grep -v "^Run," {READS_DIR}/raw_runinfo.csv >> {output.csv} || true
+        rm {READS_DIR}/raw_runinfo.csv
         """

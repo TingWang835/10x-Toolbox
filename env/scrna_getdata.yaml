@@ -1,0 +1,11 @@
+name: scrna_getdata
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - sra-tools
+  - pigz
+  - entrez-direct
+  - pandas
