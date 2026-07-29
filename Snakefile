@@ -46,12 +46,12 @@ species_cap = species_low.capitalize()
 
 # Path Roots
 data_src = config.get("DATA_SOURCE", "SRA")
-base_src = config.get("DATABASE_SOURCE", "snpeff").lower()
+
 
 REFS_DIR = f"refs/{source}/{species_low}/{assembly}/{release}"
 READS_DIR = f"reads/{PRJNAME}"
 LOG_DIR = f"reads/{PRJNAME}/logs"
-DATABASES_DIR = f"databases/{base_src}/{source}.{species}.{assembly}.{release}"
+
 
 # Sample file patterns
 cb_umi_suffix = config.get("CB_UMI_SUFFIX", "1")
@@ -109,9 +109,36 @@ def get_scrna_fastq_qc(wildcards):
     
     fastq = expand("{rddir}/fastqs/{r}_{pair}.fastq.gz", 
                     rddir=READS_DIR, r=runs, pair=[1, 2])
-    
+    fastqc_r1 = expand("{rddir}/qc/cb_umi/{r}_{sfb}_fastqc.zip",
+                    rddir=READS_DIR, r=runs, sfb=cb_umi_suffix)
+    fastqc_r2 = expand("{rddir}/qc/cdna/{r}_{sfc}_fastqc.zip",
+                    rddir=READS_DIR, r=runs, sfc=cdna_suffix)
+    multiqc_r1 = f"{READS_DIR}/qc/multiqc_cb_umi.html"
+    multiqc_r2 = f"{READS_DIR}/qc/multiqc_cdna.html"
   
-    return fastq
+    return fastq + fastqc_r1 + fastqc_r2 + [multiqc_r1, multiqc_r2]
+
+def get_scrna_align(wildcards):
+    """Align fastq.gz with index to generate bam and summary report."""
+    runs = get_scrna_runinfo(wildcards)
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    
+    if scrna_aligner in ["starsolo", "star"]:
+        align = expand("{rddir}/aligner/scrna/starsolo/{r}/Aligned.sortedByCoord.out.bam",
+                       rddir=READS_DIR, r=runs)
+        h5ad = expand("{rddir}/h5ad/starsolo/{r}.h5ad",
+                      rddir=READS_DIR, r=runs)
+        return align + h5ad
+
+    elif scrna_aligner == "kb_python":
+        align = expand("{rddir}/aligner/scrna/kb/{r}/counts_filtered/cells_x_genes.mtx",
+                       rddir=READS_DIR, r=runs)
+        h5ad = expand("{rddir}/h5ad/kb_python/{r}.h5ad",
+                      rddir=READS_DIR, r=runs)
+        return align + h5ad
+    else:
+        raise ValueError(f"Invalid aligner '{scrna_aligner}' specified in config.")
+
 
 
 
@@ -121,8 +148,8 @@ def get_scrna_fastq_qc(wildcards):
 # Include Modular Rule Files
 # =============================================================================
 include: "toolbox/get_refs.smk"
-include: "toolbox/qc.smk" 
-include: "toolbox/scrna_getdata.smk" 
+include: "toolbox/scrna_getdata.smk"
+include: "toolbox/scrna_aligner.smk" 
 
 
 
@@ -154,10 +181,6 @@ rule download_refs:
         lambda wildcards: list(get_refs(wildcards).values())
 
 
-rule qc:
-    """QC for fastq files."""
-    input:
-
 
 # =============================================================================
 # scRNA-Seq Analysis
@@ -167,11 +190,12 @@ rule scrna_runinfo:
     input: get_scrna_runinfo
 
 rule scrna_download_fq_qc:
+    """Download run files from SRA (or use local fastq files), run fastqc and multiqc"""
     input: get_scrna_fastq_qc
 
 rule scrna_align:
-    """Align RNAseq reads using spliced aligner/ pseudo aligner and generate visualization tracks."""
-    input:
+    """Align RNAseq reads using starsolo or kb_python."""
+    input: get_scrna_align
 
 rule rna_exp:
     """Perform expression analysis using DESeq2 or edgeR."""

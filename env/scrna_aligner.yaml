@@ -1,0 +1,16 @@
+name: scrna_aligner
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.12
+  - scanpy
+  - anndata
+  # Aligner tools
+  - star>=2.7.10a
+  - kb-python>=0.28.2
+  # CLI utilities used in shell blocks
+  - gzip
+  - wget
+  - samtools
