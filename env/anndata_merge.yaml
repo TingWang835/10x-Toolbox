@@ -1,0 +1,9 @@
+name: anndata_merge
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.12
+  - scanpy
+  - anndata
