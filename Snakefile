@@ -85,6 +85,7 @@ def get_refs(wildcards):
         raise ValueError(f"Unsupported REF_SOURCE target: {source}")
 
 
+
 # =============================================================================
 # scRNA-seq Helper Functions
 # =============================================================================
@@ -126,20 +127,34 @@ def get_scrna_align(wildcards):
     if scrna_aligner in ["starsolo", "star"]:
         align = expand("{rddir}/aligner/scrna/starsolo/{r}/Aligned.sortedByCoord.out.bam",
                        rddir=READS_DIR, r=runs)
-        h5ad = expand("{rddir}/h5ad/starsolo/{r}.h5ad",
-                      rddir=READS_DIR, r=runs)
-        return align + h5ad
+        return align
 
     elif scrna_aligner == "kb_python":
         align = expand("{rddir}/aligner/scrna/kb/{r}/counts_filtered/cells_x_genes.mtx",
                        rddir=READS_DIR, r=runs)
-        h5ad = expand("{rddir}/h5ad/kb_python/{r}.h5ad",
-                      rddir=READS_DIR, r=runs)
-        return align + h5ad
+        return align
     else:
         raise ValueError(f"Invalid aligner '{scrna_aligner}' specified in config.")
 
 
+def get_scrna_clean_convert_merge(wildcards):
+    """Returns all expected sample-level merged .h5ad targets."""
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    
+    # Handle STAR alias
+    if scrna_aligner == "star":
+        scrna_aligner = "starsolo"
+        
+    if scrna_aligner not in ["starsolo", "kb_python"]:
+        raise ValueError(f"Invalid aligner '{scrna_aligner}' specified in config.")
+        
+    runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
+    samples = runinfo_df["SampleName"].unique().tolist()
+    
+    # DAG steps merged h5ad > trigger individual h5ad conversion > trigger clean geneid
+    return expand(
+        "{rddir}/h5ad/{aln}/merged/{s}_merged.h5ad",
+        rddir=READS_DIR, aln=scrna_aligner, s=samples)
 
 
 
@@ -150,6 +165,7 @@ def get_scrna_align(wildcards):
 include: "toolbox/get_refs.smk"
 include: "toolbox/scrna_getdata.smk"
 include: "toolbox/scrna_aligner.smk" 
+include: "toolbox/scrna_h5ad_preprocess.smk" 
 
 
 
@@ -175,6 +191,7 @@ rule note:
         print("  snakemake rna_all           - Gets samples and refs, run QC, rna align, exp, report and enrich")
         print("="*50 + "\n")
 
+
 rule download_refs:
     """Utility run-target that safely maps upstream conversion assets."""
     input: 
@@ -196,6 +213,11 @@ rule scrna_download_fq_qc:
 rule scrna_align:
     """Align RNAseq reads using starsolo or kb_python."""
     input: get_scrna_align
+
+
+rule scrna_h5ad_merge:
+    """Align RNAseq reads using starsolo or kb_python."""
+    input: get_scrna_clean_convert_merge
 
 rule rna_exp:
     """Perform expression analysis using DESeq2 or edgeR."""

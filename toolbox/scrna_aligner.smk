@@ -38,6 +38,22 @@ def get_10x_lengths(wildcards):
     else:
         raise ValueError(f"Unsupported 10x version {version}")
 
+def get_h5ads_for_merge(wildcards):
+    """
+    Finds all runs belonging to wildcards.sample and returns
+    paths to their individual .h5ad files.
+    """
+    runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
+    
+    # Filter runs for current sample
+    runs = runinfo_df[runinfo_df["SampleName"] == wildcards.sample]["Run"].tolist()
+    
+    # Use wildcards.aligner dynamically
+    return [
+        f"{READS_DIR}/h5ad/{wildcards.aligner}/individuals/{run}.h5ad" 
+        for run in runs
+    ]
+
 # =============================================================================
 # Index Rules
 # =============================================================================
@@ -137,7 +153,7 @@ rule starsolo_align:
         "../env/scrna_aligner.yaml"
     threads: 4
     resources:
-        mem_mb = 15000,
+        mem_mb = 15000
     params:
         out_prefix = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/", 
         cb_len = lambda wc: get_10x_lengths(wc)["cb_len"],
@@ -214,6 +230,35 @@ rule kb_python_align:
         """
 
 # =============================================================================
+# Cleaning gene name in gene name/id metadata
+# =============================================================================
+
+rule clean_starsolo_features:
+    """
+    Decompresses features.tsv.gz, strips 'gene:' prefixes, and re-compresses to features.clean.tsv.gz.
+    """
+    input:
+        features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.tsv.gz"
+    output:
+        clean_features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.clean.tsv.gz"
+    shell:
+        """
+        zcat {input.features} | sed 's/gene://g' | gzip > {output.clean_features}
+        """
+
+rule clean_kb_geneids:
+    """
+    Strips 'gene:' prefixes from kb-python gene text files for easy inspection on disk.
+    """
+    input:
+        genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.txt"
+    output:
+        clean_genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.clean.txt"
+    shell:
+        """
+        sed 's/^gene://' {input.genes} > {output.clean_genes}
+        """
+# =============================================================================
 # Anndata (.h5ad) conversion
 # =============================================================================
 
@@ -221,9 +266,9 @@ rule starsolo_to_h5ad:
     input:
         matrix = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/matrix.mtx.gz",
         barcodes = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/barcodes.tsv.gz",
-        features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.tsv.gz"
+        features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.clean.tsv.gz"
     output:
-        h5ad = f"{READS_DIR}/h5ad/starsolo/{{run}}.h5ad"
+        h5ad = f"{READS_DIR}/h5ad/starsolo/individuals/{{run}}.h5ad"
     conda:
         "../env/scrna_aligner.yaml"
     script:
@@ -234,10 +279,26 @@ rule kb_to_h5ad:
     input:
         matrix = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.mtx",
         barcodes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.barcodes.txt",
-        genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.txt"
+        genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.clean.txt"
     output:
-        h5ad = f"{READS_DIR}/h5ad/kb_python/{{run}}.h5ad"
+        h5ad = f"{READS_DIR}/h5ad/kb_python/individuals/{{run}}.h5ad"
     conda:
         "../env/scrna_aligner.yaml"
     script:
         "scripts/scrna_kb_to_h5ad.py"
+
+
+rule h5ad_merge:
+    """
+    Merges individual run-level AnnData (.h5ad) files into a single sample AnnData object.
+    """
+    input:
+        h5ads = get_h5ads_for_merge
+    output:
+        merged_h5ad = f"{READS_DIR}/h5ad/{{aligner}}/merged/{{sample}}_merged.h5ad"
+    log:
+        f"{LOG_DIR}/h5ad_merge/{{aligner}}/{{sample}}.log"
+    conda:
+        "../env/scrna_aligner.yaml"
+    script:
+        "scripts/anndata_merge.py"
