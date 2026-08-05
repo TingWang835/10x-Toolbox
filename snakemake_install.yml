@@ -12,9 +12,27 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  # Core language & Snakemake execution
   - python=3.12
-  - pyyaml
-  - pandas
   - snakemake
+  - pyyaml
+  
+  # Data structures & Bioinformatics core
+  - pandas
   - biopython
+  - scipy
+  - h5py
+  
+  # Interactive single-cell inspection & visualization
+  - scanpy
+  - anndata
+  - matplotlib
+  - seaborn
+
+  # ipynb related package
+  - ipykernel
+  # register ipynb kernel based on current env: 
+  # python -m ipykernel install --user --name snakemake --display-name "Python (snakemake)"
+
+  
 # this is a snakemake portable env setup for newly installed 
