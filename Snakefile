@@ -104,12 +104,16 @@ def get_scrna_runinfo(wildcards):
     df = pd.read_csv(csv_path) 
     return df['Run'].tolist()
 
-def get_scrna_fastq_qc(wildcards):
+def get_scrna_fastq(wildcards):
     """Generates QC report targets, merge by multiqc and forces fastq trimming."""
     runs = get_scrna_runinfo(wildcards)
     
-    fastq = expand("{rddir}/fastqs/{r}_{pair}.fastq.gz", 
+    return expand("{rddir}/fastqs/{r}_{pair}.fastq.gz", 
                     rddir=READS_DIR, r=runs, pair=[1, 2])
+
+def get_scrna_qc(wildcards):
+    """Run fastqc and multiqc"""
+    runs = get_scrna_runinfo(wildcards)
     fastqc_r1 = expand("{rddir}/qc/cb_umi/{r}_{sfb}_fastqc.zip",
                     rddir=READS_DIR, r=runs, sfb=cb_umi_suffix)
     fastqc_r2 = expand("{rddir}/qc/cdna/{r}_{sfc}_fastqc.zip",
@@ -117,7 +121,7 @@ def get_scrna_fastq_qc(wildcards):
     multiqc_r1 = f"{READS_DIR}/qc/multiqc_cb_umi.html"
     multiqc_r2 = f"{READS_DIR}/qc/multiqc_cdna.html"
   
-    return fastq + fastqc_r1 + fastqc_r2 + [multiqc_r1, multiqc_r2]
+    return fastqc_r1 + fastqc_r2 + [multiqc_r1, multiqc_r2]
 
 def get_scrna_align(wildcards):
     """Align fastq.gz with index to generate bam and summary report."""
@@ -137,7 +141,7 @@ def get_scrna_align(wildcards):
         raise ValueError(f"Invalid aligner '{scrna_aligner}' specified in config.")
 
 
-def get_scrna_clean_convert_merge(wildcards):
+def get_scrna_clean_convert_group(wildcards):
     """Returns all expected sample-level merged .h5ad targets."""
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
     
@@ -149,14 +153,27 @@ def get_scrna_clean_convert_merge(wildcards):
         raise ValueError(f"Invalid aligner '{scrna_aligner}' specified in config.")
         
     runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
-    samples = runinfo_df["SampleName"].unique().tolist()
+    samples = runinfo_df["SampleName"].astype(str).str.strip().unique().tolist()
     
     # DAG steps merged h5ad > trigger individual h5ad conversion > trigger clean geneid
     return expand(
-        "{rddir}/h5ad/{aln}/merged/{s}_merged.h5ad",
+        "{rddir}/h5ad/{aln}/grouped/{s}_grouped.h5ad",
         rddir=READS_DIR, aln=scrna_aligner, s=samples)
 
 
+def get_scrna_h5ad_preprocess(wildcards):
+    """QC, filter, normalize and hvg selection for merged .h5ad files"""
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
+    samples = runinfo_df["SampleName"].astype(str).str.strip().unique().tolist() # makesure to strip space
+
+    return expand("{rddir}/h5ad/{aln}/grouped/{s}_normalized.h5ad", 
+                rddir=READS_DIR, aln=scrna_aligner, s=samples)
+
+def get_scrna_test(wildcards):
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    embed = f"{READS_DIR}/h5ad/{scrna_aligner}/pca_concat_embed.h5ad"
+    return embed
 
 
 # =============================================================================
@@ -206,29 +223,34 @@ rule scrna_runinfo:
     """Download runinfo.csv or create one from fastq files under reads/project_name"""
     input: get_scrna_runinfo
 
-rule scrna_download_fq_qc:
+rule scrna_fastqs:
     """Download run files from SRA (or use local fastq files), run fastqc and multiqc"""
-    input: get_scrna_fastq_qc
+    input: get_scrna_fastq
+
+rule scrna_qc:
+    """Run Fastqc and Multiqc on fastq files"""
+    input: get_scrna_qc
 
 rule scrna_align:
     """Align RNAseq reads using starsolo or kb_python."""
     input: get_scrna_align
 
 
-rule scrna_h5ad_merge:
-    """Align RNAseq reads using starsolo or kb_python."""
-    input: get_scrna_clean_convert_merge
+rule scrna_h5ad_group:
+    """Clean suffix from gene list, convert matrix to h5ad, 
+    merge individual run h5ads by samples (different from concat)."""
+    input: get_scrna_clean_convert_group
 
-rule rna_exp:
-    """Perform expression analysis using DESeq2 or edgeR."""
-    input:
+rule scrna_preprocess:
+    """concat all .h5ad, run QC, filter, normalize and hvg selection."""
+    input: get_scrna_h5ad_preprocess
 
 
-rule rna_report:
+rule scrna_test:
     """
-    Executes biological threshold filtering,model diagnostics, and global PCA variance plotting.
+    Concat samples_normailzed.h5ad, run pca on the concated file.
     """
-    input:
+    input: get_scrna_test
 
 
 rule rna_enrich:

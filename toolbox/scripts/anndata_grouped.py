@@ -28,4 +28,4 @@ merged_adata.obs["aligner"] = snakemake.wildcards["aligner"]
 merged_adata.var_names_make_unique()
 
 # Write merged AnnData
-merged_adata.write_h5ad(snakemake.output["merged_h5ad"])
+merged_adata.write_h5ad(snakemake.output["grouped_h5ad"])

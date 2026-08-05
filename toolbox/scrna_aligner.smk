@@ -38,7 +38,7 @@ def get_10x_lengths(wildcards):
     else:
         raise ValueError(f"Unsupported 10x version {version}")
 
-def get_h5ads_for_merge(wildcards):
+def get_h5ads_for_group(wildcards):
     """
     Finds all runs belonging to wildcards.sample and returns
     paths to their individual .h5ad files.
@@ -281,24 +281,24 @@ rule kb_to_h5ad:
         barcodes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.barcodes.txt",
         genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.clean.txt"
     output:
-        h5ad = f"{READS_DIR}/h5ad/kb_python/individuals/{{run}}.h5ad"
+        h5ad = temp(f"{READS_DIR}/h5ad/kb_python/individuals/{{run}}.h5ad")
     conda:
         "../env/scrna_aligner.yaml"
     script:
         "scripts/scrna_kb_to_h5ad.py"
 
 
-rule h5ad_merge:
+rule h5ad_group:
     """
     Merges individual run-level AnnData (.h5ad) files into a single sample AnnData object.
     """
     input:
-        h5ads = get_h5ads_for_merge
+        h5ads = get_h5ads_for_group
     output:
-        merged_h5ad = f"{READS_DIR}/h5ad/{{aligner}}/merged/{{sample}}_merged.h5ad"
+        grouped_h5ad = temp(f"{READS_DIR}/h5ad/{{aligner}}/grouped/{{sample}}_grouped.h5ad")
     log:
-        f"{LOG_DIR}/h5ad_merge/{{aligner}}/{{sample}}.log"
+        f"{LOG_DIR}/h5ad_group/{{aligner}}/{{sample}}.log"
     conda:
         "../env/scrna_aligner.yaml"
     script:
-        "scripts/anndata_merge.py"
+        "scripts/anndata_grouped.py"

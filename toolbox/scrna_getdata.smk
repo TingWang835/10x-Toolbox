@@ -34,12 +34,38 @@ rule parse_scrna_metadata:
 
         df_filtered.to_csv(output.csv, index=False)
 
+rule prefetch_sra:
+    """
+    Prefetches raw .sra container from NCBI into the sra directory.
+    """
+    output:
+        sra_dir = temp(directory(f"{READS_DIR}/sra/{{run}}"))
+    log:
+        f"{LOG_DIR}/prefetch/{{run}}.log"
+    conda:
+        "../env/scrna_getdata.yaml"
+    threads: 2
+    resources:
+        mem_mb = 4000
+    shell:
+        """
+        exec 2> {log}
+        mkdir -p {READS_DIR}/sra
+        
+        # Point output directory to the parent 'sra' folder. 
+        # prefetch automatically creates the '{wildcards.run}' subfolder inside it.
+        prefetch {wildcards.run} \
+            --max-size u \
+            -O {READS_DIR}/sra
+        """
 
-rule download_scrna_fastqs:
+rule parse_scrna_fastqs:
     """
-    Streams paired FASTQ files directly from SRA using fastq-dump,
-    subsampling spots on the fly and outputting compressed .fastq.gz files.
+    Parse .sra using fasterq-dump (multi-threaded),
+    uses a dedicated temp directory for fast disk I/O, and compresses outputs via pigz.
     """
+    input:
+        sra_dir = f"{READS_DIR}/sra/{{run}}"
     output:
         r1 = f"{READS_DIR}/fastqs/{{run}}_1.fastq.gz",
         r2 = f"{READS_DIR}/fastqs/{{run}}_2.fastq.gz"
@@ -48,20 +74,28 @@ rule download_scrna_fastqs:
     conda:
         "../env/scrna_getdata.yaml"
     threads: 4
-    params:
-        n = config.get("N", 100000)
     resources:
-        mem_mb = 4000
+        mem_mb = 8000
     shell:
         """
         exec 2> {log}
         mkdir -p {READS_DIR}/fastqs
-
-        fastq-dump {wildcards.run} \
-            --split-files \
-            -X {params.n} \
-            --outdir {READS_DIR}/fastqs
         
+        # Create a temporary working directory for fasterq-dump cache files
+        TMP_DIR=$(mktemp -d -p {READS_DIR}/fastqs tmp_{wildcards.run}_XXXXXX)
+
+        # Pass the downloaded local SRA directory directly
+        fasterq-dump {input.sra_dir} \
+            --split-files \
+            --include-technical \
+            --threads {threads} \
+            --outdir {READS_DIR}/fastqs \
+            --temp $TMP_DIR
+
+        # Remove temp scratch dir
+        rm -rf $TMP_DIR
+        
+        # Compress with pigz
         pigz -f -p {threads} {READS_DIR}/fastqs/{wildcards.run}_*.fastq
         """
 
