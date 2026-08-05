@@ -17,7 +17,7 @@ fi
 snakemake \
     --config PRJNAME="$PRJ" \
     --use-conda \
-    --cores 4 \
+    --cores 12 \
     --printshellcmds \
     $EXTRA_FLAGS \
     "$TARGET"
