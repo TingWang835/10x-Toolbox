@@ -131,17 +131,24 @@ rule uscs_translator:
 
 
 rule gff_to_gtf:
-    """Locally converts GFF3 to GTF format via gffread."""
+    """Locally converts GFF3 to GTF format via AGAT."""
     input:
         gff = lambda wildcards: get_refs(wildcards)["gff"]
     output:
         gtf = f"{REFS_DIR}/{species_cap}.{assembly}.{release}.gtf" if source == "ensembl" else f"{REFS_DIR}/{acc}.gtf"
-    log: f"{LOG_DIR}/get_refs/gff_to_gtf.log"
     conda: "../env/get_refs.yaml"
+    log:
+        f"{LOG_DIR}/get_refs/agat_log"
     shell:
         """
-        gffread {input.gff} -T -o {output.gtf} > {log} 2>&1
+        agat_convert_sp_gff2gtf.pl --gff {input.gff} -o {output.gtf}
+        
+        if [ -d agat_log_* ]; then
+            rm -rf {log}
+            mv agat_log_* {log}
+        fi
         """
+
 
 
 rule samtools_faidx:
