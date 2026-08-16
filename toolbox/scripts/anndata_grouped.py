@@ -16,10 +16,10 @@ merged_adata = ad.concat(
     axis=0,
     join="outer",
     label="run_id",
+    merge="first", # retain adata.var columns
     keys=[snakemake.wildcards.get("run", f"run_{i}") for i in range(len(input_files))],
     index_unique="-"
 )
-
 # Preserve sample-level metadata
 merged_adata.obs["sample_name"] = snakemake.wildcards["sample"]
 merged_adata.obs["aligner"] = snakemake.wildcards["aligner"]

@@ -137,8 +137,8 @@ rule starsolo_align:
     performing cell barcode error correction, UMI deduplication, and feature quantification.
     """
     input:
-        r1 = f"{READS_DIR}/fastqs/{{run}}_{cb_umi_suffix}.fastq.gz",
-        r2 = f"{READS_DIR}/fastqs/{{run}}_{cdna_suffix}.fastq.gz",
+        r1 = ancient(f"{READS_DIR}/fastqs/{{run}}_{cb_umi_suffix}.fastq.gz"),
+        r2 = ancient(f"{READS_DIR}/fastqs/{{run}}_{cdna_suffix}.fastq.gz"),
         index = f"{REFS_DIR}/star_index",
         whitelist = get_10x_whitelist
     output:
@@ -197,8 +197,8 @@ rule kb_python_align:
     Aligns single-cell paired FASTQs and quantifies gene expression using kb-python (kallisto + bustools).
     """
     input:
-        r1 = f"{READS_DIR}/fastqs/{{run}}_{cb_umi_suffix}.fastq.gz",
-        r2 = f"{READS_DIR}/fastqs/{{run}}_{cdna_suffix}.fastq.gz",
+        r1 = ancient(f"{READS_DIR}/fastqs/{{run}}_{cb_umi_suffix}.fastq.gz"),
+        r2 = ancient(f"{READS_DIR}/fastqs/{{run}}_{cdna_suffix}.fastq.gz"),
         idx = f"{REFS_DIR}/kb_index/transcriptome.idx",
         t2g = f"{REFS_DIR}/kb_index/transcripts_to_genes.txt"
     output:
@@ -229,63 +229,45 @@ rule kb_python_align:
             {input.r1} {input.r2}
         """
 
-# =============================================================================
-# Cleaning gene name in gene name/id metadata
-# =============================================================================
 
-rule clean_starsolo_features:
-    """
-    Decompresses features.tsv.gz, strips 'gene:' prefixes, and re-compresses to features.clean.tsv.gz.
-    """
-    input:
-        features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.tsv.gz"
-    output:
-        clean_features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.clean.tsv.gz"
-    shell:
-        """
-        zcat {input.features} | sed 's/gene://g' | gzip > {output.clean_features}
-        """
 
-rule clean_kb_geneids:
-    """
-    Strips 'gene:' prefixes from kb-python gene text files for easy inspection on disk.
-    """
-    input:
-        genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.txt"
-    output:
-        clean_genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.clean.txt"
-    shell:
-        """
-        sed 's/^gene://' {input.genes} > {output.clean_genes}
-        """
 # =============================================================================
 # Anndata (.h5ad) conversion
 # =============================================================================
+def get_aligner_output(wildcards):
+    """Retrieves Matrix, Gene file and Barcodes based on aligner type."""
+    scrna_aligner = config.get("SCRNA_ALIGNER", "kb_python").lower()
 
-rule starsolo_to_h5ad:
+    if scrna_aligner in {"starsolo", "star"}:
+        return {
+            "matrix": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/matrix.mtx.gz",
+            "barcodes": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/barcodes.tsv.gz",
+            "genes": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/features.tsv.gz",
+        }
+    elif scrna_aligner in {"kb_python", "kb", "kallisto"}:
+        return {
+            "matrix": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.mtx",
+            "barcodes": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.barcodes.txt",
+            "genes": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.genes.txt",
+        }
+    else:
+        raise ValueError(f"Unsupported SCRNA_ALIGNER target: {scrna_aligner}")
+
+
+ALIGNER_TYPE = config.get("SCRNA_ALIGNER", "kb_python").lower()
+
+rule mtx_to_h5ad:
     input:
-        matrix = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/matrix.mtx.gz",
-        barcodes = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/barcodes.tsv.gz",
-        features = f"{READS_DIR}/aligner/scrna/starsolo/{{run}}/Solo.out/Gene/filtered/features.clean.tsv.gz"
+        unpack(get_refs),
+        unpack(get_aligner_output)
     output:
-        h5ad = f"{READS_DIR}/h5ad/starsolo/individuals/{{run}}.h5ad"
+        h5ad = temp(f"{READS_DIR}/h5ad/{ALIGNER_TYPE}/individuals/{{run}}.h5ad")
+    params: 
+        aligner = ALIGNER_TYPE
     conda:
         "../env/scrna_aligner.yaml"
     script:
-        "scripts/scrna_starsolo_to_h5ad.py"
-
-
-rule kb_to_h5ad:
-    input:
-        matrix = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.mtx",
-        barcodes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.barcodes.txt",
-        genes = f"{READS_DIR}/aligner/scrna/kb/{{run}}/counts_filtered/cells_x_genes.genes.clean.txt"
-    output:
-        h5ad = temp(f"{READS_DIR}/h5ad/kb_python/individuals/{{run}}.h5ad")
-    conda:
-        "../env/scrna_aligner.yaml"
-    script:
-        "scripts/scrna_kb_to_h5ad.py"
+        "scripts/scrna_mtx_to_h5ad.py"
 
 
 rule h5ad_group:
