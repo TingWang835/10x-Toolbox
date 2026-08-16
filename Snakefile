@@ -107,9 +107,11 @@ def get_scrna_runinfo(wildcards):
 def get_scrna_fastq(wildcards):
     """Generates QC report targets, merge by multiqc and forces fastq trimming."""
     runs = get_scrna_runinfo(wildcards)
-    
-    return expand("{rddir}/fastqs/{r}_{pair}.fastq.gz", 
-                    rddir=READS_DIR, r=runs, pair=[1, 2])
+    return [
+        ancient(f"{READS_DIR}/fastqs/{r}_{pair}.fastq.gz")
+        for r in runs
+        for pair in [1, 2]
+    ]
 
 def get_scrna_qc(wildcards):
     """Run fastqc and multiqc"""
@@ -162,18 +164,18 @@ def get_scrna_clean_convert_group(wildcards):
 
 
 def get_scrna_h5ad_preprocess(wildcards):
-    """QC, filter, normalize and hvg selection for merged .h5ad files"""
+    """Run QC, filter, normalize, hvg selection, Concat, PCA, batch correction and embed UMAP and/or tSNE for .h5ad files"""
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
-    runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
-    samples = runinfo_df["SampleName"].astype(str).str.strip().unique().tolist() # makesure to strip space
-
-    return expand("{rddir}/h5ad/{aln}/grouped/{s}_normalized.h5ad", 
-                rddir=READS_DIR, aln=scrna_aligner, s=samples)
+    embed = f"{READS_DIR}/h5ad/{scrna_aligner}/pca_concat_batch_embed.h5ad"
+    return embed
 
 def get_scrna_test(wildcards):
+    runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
+    runs = get_scrna_runinfo(wildcards)
+    samples = runinfo_df["SampleName"].astype(str).str.strip().unique().tolist()
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
-    embed = f"{READS_DIR}/h5ad/{scrna_aligner}/pca_concat_embed.h5ad"
-    return embed
+    return expand("{rddir}/h5ad/{aln}/grouped/{s}_grouped.h5ad",
+        rddir=READS_DIR, aln=scrna_aligner, s=samples)
 
 
 # =============================================================================
@@ -233,13 +235,10 @@ rule scrna_qc:
 
 rule scrna_align:
     """Align RNAseq reads using starsolo or kb_python."""
-    input: get_scrna_align
+    input: 
+        get_scrna_align,
+        get_scrna_clean_convert_group
 
-
-rule scrna_h5ad_group:
-    """Clean suffix from gene list, convert matrix to h5ad, 
-    merge individual run h5ads by samples (different from concat)."""
-    input: get_scrna_clean_convert_group
 
 rule scrna_preprocess:
     """concat all .h5ad, run QC, filter, normalize and hvg selection."""

@@ -1,11 +1,4 @@
 localrules: 
-# =============================================================================
-# Check Points
-# =============================================================================
-
-
-
-
 
 # =============================================================================
 # Download Sample data
@@ -39,7 +32,7 @@ rule prefetch_sra:
     Prefetches raw .sra container from NCBI into the sra directory.
     """
     output:
-        sra_dir = temp(directory(f"{READS_DIR}/sra/{{run}}"))
+        sra_dir = directory(f"{READS_DIR}/sra/{{run}}")
     log:
         f"{LOG_DIR}/prefetch/{{run}}.log"
     conda:
@@ -61,8 +54,7 @@ rule prefetch_sra:
 
 rule parse_scrna_fastqs:
     """
-    Parse .sra using fasterq-dump (multi-threaded),
-    uses a dedicated temp directory for fast disk I/O, and compresses outputs via pigz.
+    Parse .sra using fasterq-dump (multi-threaded) and compress with pigz.
     """
     input:
         sra_dir = f"{READS_DIR}/sra/{{run}}"
@@ -80,11 +72,9 @@ rule parse_scrna_fastqs:
         """
         exec 2> {log}
         mkdir -p {READS_DIR}/fastqs
-        
-        # Create a temporary working directory for fasterq-dump cache files
+
         TMP_DIR=$(mktemp -d -p {READS_DIR}/fastqs tmp_{wildcards.run}_XXXXXX)
 
-        # Pass the downloaded local SRA directory directly
         fasterq-dump {input.sra_dir} \
             --split-files \
             --include-technical \
@@ -92,12 +82,11 @@ rule parse_scrna_fastqs:
             --outdir {READS_DIR}/fastqs \
             --temp $TMP_DIR
 
-        # Remove temp scratch dir
         rm -rf $TMP_DIR
-        
-        # Compress with pigz
+
         pigz -f -p {threads} {READS_DIR}/fastqs/{wildcards.run}_*.fastq
         """
+    
 
 
 # =============================================================================
@@ -108,7 +97,7 @@ rule parse_scrna_fastqs:
 # -------------------------------------------------------------------
 rule fastqc_cb_umi:
     input:
-        r1 = f"{READS_DIR}/fastqs/{{run}}_{cb_umi_suffix}.fastq.gz"
+        r1 = ancient(f"{READS_DIR}/fastqs/{{run}}_{cb_umi_suffix}.fastq.gz")
     output:
         html = f"{READS_DIR}/qc/cb_umi/{{run}}_{cb_umi_suffix}_fastqc.html",
         zip  = f"{READS_DIR}/qc/cb_umi/{{run}}_{cb_umi_suffix}_fastqc.zip"
@@ -124,7 +113,7 @@ rule fastqc_cb_umi:
 
 rule fastqc_cdna:
     input:
-        r2 = f"{READS_DIR}/fastqs/{{run}}_{cdna_suffix}.fastq.gz"
+        r2 = ancient(f"{READS_DIR}/fastqs/{{run}}_{cdna_suffix}.fastq.gz")
     output:
         html = f"{READS_DIR}/qc/cdna/{{run}}_{cdna_suffix}_fastqc.html",
         zip  = f"{READS_DIR}/qc/cdna/{{run}}_{cdna_suffix}_fastqc.zip"
