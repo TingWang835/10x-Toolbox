@@ -10,6 +10,6 @@ dependencies:
   - unzip
   - gzip
   - pandas
-  - gffread
+  - agat
   - samtools
   - ncbi-datasets-cli

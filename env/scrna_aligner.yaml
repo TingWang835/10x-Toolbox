@@ -7,6 +7,8 @@ dependencies:
   - python=3.12
   - scanpy
   - anndata
+  # for h5ad metadata parsing
+  - gffutils
   # Aligner tools
   - star>=2.7.10a
   - kb-python>=0.28.2
