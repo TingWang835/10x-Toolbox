@@ -169,13 +169,13 @@ def get_scrna_h5ad_preprocess(wildcards):
     embed = f"{READS_DIR}/h5ad/{scrna_aligner}/pca_concat_batch_embed.h5ad"
     return embed
 
-def get_scrna_test(wildcards):
-    runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
-    runs = get_scrna_runinfo(wildcards)
-    samples = runinfo_df["SampleName"].astype(str).str.strip().unique().tolist()
+def get_scrna_anno_cal(wildcards):
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
-    return expand("{rddir}/h5ad/{aln}/grouped/{s}_grouped.h5ad",
-        rddir=READS_DIR, aln=scrna_aligner, s=samples)
+    return f"{READS_DIR}/annotation/{scrna_aligner}/annotated.h5ad"
+
+def get_scrna_anno_plot(wildcards):
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    return f"{READS_DIR}/annotation/{scrna_aligner}/plots"
 
 
 # =============================================================================
@@ -185,6 +185,7 @@ include: "toolbox/get_refs.smk"
 include: "toolbox/scrna_getdata.smk"
 include: "toolbox/scrna_aligner.smk" 
 include: "toolbox/scrna_h5ad_preprocess.smk" 
+include: "toolbox/scrna_annotation.smk" 
 
 
 
@@ -241,15 +242,24 @@ rule scrna_align:
 
 
 rule scrna_preprocess:
-    """concat all .h5ad, run QC, filter, normalize and hvg selection."""
+    """Run through all preprocessing procedures including:
+    QC, Filter, Normalize, HVG, PCA, Concat, Batch Correction, Embed."""
     input: get_scrna_h5ad_preprocess
 
+rule scrna_annotation:
+    """Run Annotation calculations and plots. """
+    input: 
+        get_scrna_anno_cal,
+        get_scrna_anno_plot
 
-rule scrna_test:
-    """
-    Concat samples_normailzed.h5ad, run pca on the concated file.
-    """
-    input: get_scrna_test
+rule scrna_anno_cal:
+    """ Run only the calculations for annitation. """
+    input: get_scrna_anno_cal
+
+rule scrna_anno_plot:
+    """ Run only the plots for annitation. """
+    input: get_scrna_anno_plot
+
 
 
 rule rna_enrich:

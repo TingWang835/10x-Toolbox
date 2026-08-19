@@ -1,61 +1,48 @@
-rule scrna_manual_annotation:
+rule scrna_annotation_cals:
     """
-    Find marker genes per cluster, map clusters to cell types,
-    and output annotated AnnData and diagnostic plots.
-    """
-    input:
-        h5ad = f"{READS_DIR}/h5ad/{{aligner}}/pca_concat_batch.h5ad"
-    output:
-        h5ad_annotated = f"{READS_DIR}/annotation/h5ad/{{aligner}}_annotated.h5ad",
-        umap_plot = f"{READS_DIR}/annotation/plots/{{aligner}}_celltypes_umap.png",
-        dotplot = f"{READS_DIR}/annotation/plots/{{aligner}}_markers_dotplot.png",
-        marker_csv = f"{READS_DIR}/annotation/tables/{{aligner}}_cluster_markers.csv"
-    log:
-        f"{LOG_DIR}/annotation/manual_annotation_{{aligner}}.log"
-    params:
-        cluster_key = config.get("COMM_DETECT", "leiden"),
-        # Dictionary mapping cluster IDs (as strings) to cell type labels
-        cluster_mapping = config.get("CLUSTER_MAP", {
-            "0": "T Cells",
-            "1": "B Cells",
-            "2": "Monocytes",
-            "3": "NK Cells"
-        }),
-        # Canonical marker genes to display in the verification dotplot
-        canonical_markers = config.get("CANONICAL_MARKERS", [
-            "CD3D", "CD3E",  # T Cells
-            "CD19", "MS4A1", # B Cells
-            "CD14", "LYZ",   # Monocytes
-            "NCAM1", "KLRB1" # NK Cells
-        ]),
-        top_n_markers = config.get("TOP_N_MARKERS", 10)
-    conda:
-        "../env/scrna_preprocess.yaml"
-    threads: 4
-    script:
-        "scripts/scrna_manual_annotate.py"
-
-
-
-
-rule scrna_auto_annotation:
-    """
-    Automatically annotate cell types using pre-trained CellTypist models.
+    Performs Leiden clustering, scores cluster markers against embryonic 
+    lineages using ScType-style gene sets, maps cell types, and outputs annotated h5ad.
     """
     input:
-        h5ad = f"{READS_DIR}/h5ad/{{aligner}}/pca_concat_batch.h5ad"
+        h5ad=f"{READS_DIR}/h5ad/{{aligner}}/pca_concat_batch_embed.h5ad",
+        markers_csv=config.get("ANNOTATION_MARKER", "databases/annotation_marker/celegans_embryo_markers.csv")
     output:
-        h5ad_annotated = f"{READS_DIR}/annotation/h5ad/{{aligner}}_auto_annotated.h5ad",
-        umap_plot = f"{READS_DIR}/annotation/plots/{{aligner}}_auto_celltypes_umap.png",
-        probability_plot = f"{READS_DIR}/annotation/plots/{{aligner}}_celltypist_conf_umap.png"
+        h5ad_annotated=f"{READS_DIR}/annotation/{{aligner}}/annotated.h5ad",
+        cluster_scores_csv=f"{READS_DIR}/annotation/{{aligner}}/reports/cluster_scores.csv",
+        markers_csv=f"{READS_DIR}/annotation/{{aligner}}/reports/marker_genes.csv"
     log:
-        f"{LOG_DIR}/annotation/auto_annotation_{{aligner}}.log"
+        f"{LOG_DIR}/annotation/scrna_annotation_{{aligner}}.log"
     params:
-        model_name = config.get("CELLTYPIST_MODEL", "Immune_All_Low.pkl"),
-        use_majority_voting = config.get("USE_MAJORITY_VOTING", True),
-        cluster_key = config.get("COMM_DETECT", "leiden")
+        resolution=config.get("RESOLUTION", 0.8),
+        cluster_key=config.get("CLUSTER_KEY", "leiden"),
+        score_threshold=config.get("SCORE_THRESHOLD", 0.05)
     conda:
-        "../env/scrna_preprocess.yaml" # Ensure celltypist is installed in this env
-    threads: 4
+        "../env/scrna_annotation.yaml"
+    threads: 8
     script:
-        "scripts/scrna_auto_annotate.py"
+        "scripts/scrna_annotation_sctype.py"
+
+
+rule scrna_annotation_plots:
+    """
+    Generates standalone UMAP, t-SNE, and ordered marker dotplots 
+    from the annotated .h5ad object and precomputed marker genes CSV.
+    """
+    input:
+        h5ad=f"{READS_DIR}/annotation/{{aligner}}/annotated.h5ad",
+        markers_csv=f"{READS_DIR}/annotation/{{aligner}}/reports/marker_genes.csv"
+    output:
+        plots_dir=directory(f"{READS_DIR}/annotation/{{aligner}}/plots")
+    log:
+        f"{LOG_DIR}/annotation/scrna_annotation_plots_{{aligner}}.log"
+    params:
+        cluster_key=config.get("CLUSTER_KEY", "leiden"),
+        top_n_markers=config.get("TOP_N_MARKERS", 3),
+        embed=config.get("EMBED", "umap&tsne"),
+        umap_tsne_width = config.get("UMAP_TSNE_WIDTH", 12),
+        umap_tsne_tall = config.get("UMAP_TSNE_TALL", 8),
+    conda:
+        "../env/scrna_annotation.yaml"
+    threads: 2
+    script:
+        "scripts/scrna_annotation_plots.py"

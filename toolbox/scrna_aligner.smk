@@ -54,6 +54,24 @@ def get_h5ads_for_group(wildcards):
         for run in runs
     ]
 
+def get_aligner_output(wildcards):
+    """Retrieves Matrix, Gene file and Barcodes based on aligner type."""
+    scrna_aligner = config.get("SCRNA_ALIGNER", "kb_python").lower()
+
+    if scrna_aligner in {"starsolo", "star"}:
+        return {
+            "matrix": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/matrix.mtx.gz",
+            "barcodes": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/barcodes.tsv.gz",
+            "genes": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/features.tsv.gz",
+        }
+    elif scrna_aligner in {"kb_python", "kb", "kallisto"}:
+        return {
+            "matrix": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.mtx",
+            "barcodes": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.barcodes.txt",
+            "genes": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.genes.txt",
+        }
+    else:
+        raise ValueError(f"Unsupported SCRNA_ALIGNER target: {scrna_aligner}")
 # =============================================================================
 # Index Rules
 # =============================================================================
@@ -234,24 +252,6 @@ rule kb_python_align:
 # =============================================================================
 # Anndata (.h5ad) conversion
 # =============================================================================
-def get_aligner_output(wildcards):
-    """Retrieves Matrix, Gene file and Barcodes based on aligner type."""
-    scrna_aligner = config.get("SCRNA_ALIGNER", "kb_python").lower()
-
-    if scrna_aligner in {"starsolo", "star"}:
-        return {
-            "matrix": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/matrix.mtx.gz",
-            "barcodes": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/barcodes.tsv.gz",
-            "genes": f"{READS_DIR}/aligner/scrna/starsolo/{wildcards.run}/Solo.out/Gene/filtered/features.tsv.gz",
-        }
-    elif scrna_aligner in {"kb_python", "kb", "kallisto"}:
-        return {
-            "matrix": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.mtx",
-            "barcodes": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.barcodes.txt",
-            "genes": f"{READS_DIR}/aligner/scrna/kb/{wildcards.run}/counts_filtered/cells_x_genes.genes.txt",
-        }
-    else:
-        raise ValueError(f"Unsupported SCRNA_ALIGNER target: {scrna_aligner}")
 
 
 ALIGNER_TYPE = config.get("SCRNA_ALIGNER", "kb_python").lower()
