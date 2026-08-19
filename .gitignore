@@ -22,3 +22,4 @@ toolbox/getdata.smk
 toolbox/qc.smk
 toolbox/rna_aligner.smk
 toolbox/rna_diff_exp.smk
+runinfo_cond.sh
