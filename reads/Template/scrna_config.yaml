@@ -1,0 +1,157 @@
+# ~~~~~scRNAseq Template~~~~~
+
+
+# =============================================================================
+# General Variables
+# =============================================================================
+
+#PRJN number (only used in getdata_sra)
+PRJNUMBER: "PRJNA523834"
+
+# Project name 
+PRJNAME: "scrna_packer_2019"
+
+# =============================================================================
+# scrna_getdata.smk specific variables
+# =============================================================================
+# choose Data source for LOCAL or SRA 
+# LOCAL: create a runinfo.csv from items under reads/{PRJNAME}
+# SRA: if runinfo.csv exist: download SRRs from runinfo.csv, else query for runinfo.csv from SRA metadata
+DATASOURCE: "SRA"
+
+# Assign Fastq suffix for correct identification (e.g. _1.fastq.gz _2.fastq.gz)
+CB_UMI_SUFFIX: "1"  # Illumina default 1
+CDNA_SUFFIX: "2"    # Illumina default 2
+
+# =============================================================================
+# Ref variables 
+# =============================================================================
+
+REF: 
+  SOURCE: "ensembl"
+  SPECIES: "caenorhabditis_elegans"
+  ASSEMBLY: "WBcel235" # e.g. ncbi: GRCh38, ensembl: R64-2-1
+  RELEASE: "38" # ncbi: p14 (patch #), ensemble: 83
+  ACC: "" # leave empty for ensembl
+
+
+
+
+# =============================================================================
+# scrna_aligner.smk specific variables
+# =============================================================================
+
+# choose rna alinger f(starsolo, kb_python )
+SCRNA_ALIGNER: "kb_python"
+
+# ------------------------------------------------
+# (optional) Star aligner specific variable
+# ------------------------------------------------
+10X_VERSION: "v2"
+V2_WHITELIST_NAME: "737K-august-2016.txt"
+V3_WHITELIST_NAME: "3M-february-2018.txt"
+
+# suffix array index bases
+# Organism Class           |   Genome Size   |   Recommended sa Value
+# Small Eukaryotes / Yeast |     ~12 Mb      |      10 (Default choice)
+# Insects / Worms          | 100 Mb – 300 Mb |      12
+# Large Mammals / Plants   |     ~3 Gb+      |      14 (STAR maximum limit)
+# Bacteria                 |  ~4 Mb – 5 Mb   |       8
+STAR_SA: "12"
+
+# Cell Barcode and UMI decoder type 
+SOLO_TYPE: "CB_UMI_Simple" #choose from "CB_UMI_Simple", "CB_UMI_Complex", "SmartSeq" (case sensitive)
+
+# Starsolo cell filtering variables
+SOLO_CELL_FILTER: "CellRanger2.2"
+SOLO_EXPECTED_CELLS: 3000  # typical range from 500~10000
+SOLO_MAX_PERCENTILE: 0.99
+SOLO_MAX_MIN_RATIO: 10
+
+
+# ------------------------------------------------
+#(optional) Kallisto variables
+# ------------------------------------------------
+# determine CB and UMI length, decide CD + UMI correction
+KB_TECHNOLOGY: "10XV2" # e.g., 10XV1, 10XV2, 10XV3
+
+
+# =============================================================================
+# scrna_h5ad_preprocess.smk specific variable
+# =============================================================================
+# QC filter variables
+QC_MIN_GENES: 200       # cells unique gene expression < 200
+QC_MAX_GENES: 6000      # cells unique gene expression > 6000
+QC_MIN_CELLS: 3         # cell number < 3
+QC_MAX_PCT_MITO: 15.0   # cells with unique Mitochrondria gene >15.0% (potentially damanaged)
+
+# normalize and HVG selection variables
+NORM_TARGET_SUM: 10000      # normalized to counts per: 10000 (default) or None (Scanpy take medium across samples)
+HVG_N_TOP_GENES: 2000        # select the top 2000 highly variable genes for noise reduction
+HVG_FLAVOR: "seurat"         # available choice: "seurat", "cell_ranger" | "seurat_v3" and "pearson_residuals" needs un-logged input
+
+# Concat and PCA variables
+Z_CAP: 10             # Z-Score cap to prevent extreme expression bias
+N_PC: 50              # Compute the top N number of Priciple Component
+SVD_SOLVER: "arpack"  # Choose from "arpack", "random" (for large dataset), "auto"
+
+# Batch correction variables
+BATCH_METHOD: "harmony"  # Options: "harmony", "bbknn", "scvi"
+
+# Cluster plots variables 
+EMBED: "umap&tsne"  # Option "tsne", "umap", "umap&tsne" choose which 2D projection data to enbed in h5ad
+N_NEIGHBOR: 15
+
+
+
+
+
+# =============================================================================
+# scRNA_annotation.smk variables
+# =============================================================================
+ANNOTATION_MARKER: databases/annotation_marker/celegans_embryo_markers.csv  # locate marker list file under "databases/annotation_marker/your_marker_name.csv"
+
+CLUSTER_KEY: "leiden"      # "leiden" (default) better at producing well connected clusters, using "louvain" only in reproducing historic data analysis.
+RESOLUTION: 0.2            # low res: 0.1-0.3 , high res:1.0-2.0+ determine cluster separatation
+TOP_N_MARKERS: 3
+SCORE_THRESHOLD: 0.05
+UMAP_MIN_DIST: 0.5
+
+# UMAP tSNE plot size
+UMAP_TSNE_WIDTH: 16
+UMAP_TSNE_TALL: 8
+
+# pseudobulk preperation variable 
+CELL_TYPE_KEY: "cell_type" # for finding the correct cell type metadata in e.g. adata.obs["cell_type"]
+SAMPLE_KEY: "sample_name"  # same as above 
+RUN_KEY: "run_id"          # same as above 
+CONDITION_KEY: "condition" # same as above 
+MIN_CELLS_PER_GROUP: 10    # filter subgroups with < X number of cells
+
+
+# DESeq2 variables
+DESEQ_ANALYSIS: "wald" # for pair-wise: "wald", for ANOVA: "lrt"
+COMPARE_CONDITIONS: ["300min","400min"] # option1: for wald analysis, list EXACTLY 2 conditions
+                                                         # option2: for lrt analysis list all selected conditions [control, treatment1, treatment2]
+PADJ_CUTOFF: 0.05
+LOG2FC_CUTOFF: 0.25
+
+# Heatmap variables
+TOP_N_DEGS: 10 # show top X number of DEGs from each cell type in Heatmap.(ranked by P-adj)
+
+# Enrichment variables
+GO_PADJ_CUTOFF: 0.05
+GENEID_TYPE: "WORMBASE"
+# choose from:
+  # ENSEMBL
+  # WORMBASE 
+  # ENTREZID (ncbi gene_ids)
+  # SYMBOL (standard gene short names)
+
+
+
+
+
+
+
+
