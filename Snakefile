@@ -177,6 +177,19 @@ def get_scrna_anno_plot(wildcards):
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
     return f"{READS_DIR}/annotation/{scrna_aligner}/plots"
 
+def get_scrna_pseudobulk(wildcards):
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    return f"{READS_DIR}/annotation/{scrna_aligner}/pseudobulk/deseq2_full_results.csv"
+
+def get_scrna_heatmap_volcano(wildcards):
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    heatmap = f"{READS_DIR}/annotation/{scrna_aligner}/pseudobulk/plots/top_degs_heatmap.pdf"
+    volcano = f"{READS_DIR}/annotation/{scrna_aligner}/pseudobulk/plots/all_celltypes_volcano.pdf"
+    return heatmap, volcano
+
+def get_scrna_enrich(wildcards):
+    scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
+    return f"{READS_DIR}/annotation/{scrna_aligner}/pseudobulk/go_enrichment_results.csv"
 
 # =============================================================================
 # Include Modular Rule Files
@@ -260,13 +273,18 @@ rule scrna_anno_plot:
     """ Run only the plots for annitation. """
     input: get_scrna_anno_plot
 
+rule scrna_pseudobulk:
+    """Prepare dataset for a pseudobulk clustering by cell_types, run_id and sample_name / condition,
+       Run Deseq2 for DEG analysis"""
+    input: get_scrna_pseudobulk
 
+rule scrna_degplots:
+    """Generate heatmap and volcano plots"""
+    input: get_scrna_heatmap_volcano
 
-rule rna_enrich:
-    """
-    Generate Heatmap and perform functional enrichment study.
-    """
-    input:
+rule scrna_enrich:
+    """Run Enrichment analysis"""
+    input: get_scrna_enrich
 
 rule rna_all:
     """A shortcut to run a full course of RNAseq with qc, aligner, exp, report and enrich."""

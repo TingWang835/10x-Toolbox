@@ -1,0 +1,32 @@
+name: scrna_r_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # R Core Infrastructure
+  - r-base=4.3
+  - r-essentials
+  - r-languageserver
+  
+  # Data Manipulation & I/O
+  - r-dplyr
+  - r-readr
+  
+  # Differential Expression & Normalization
+  - bioconductor-deseq2
+  - bioconductor-edger
+  - bioconductor-vsn
+  
+  # Advanced Visualization & Heatmaps
+  - r-ggplot2
+  - r-ggrepel               # Prevents gene label overlap in volcano plots
+  - bioconductor-complexheatmap   # Complex multi-panel temporal/cell-type heatmaps
+  - r-pheatmap              # Quick hierarchical clustering
+  - r-patchwork            # Clean plot composition (plot1 + plot2)
+  - r-gridextra
+  
+  # Functional Enrichment Analysis
+  - bioconductor-clusterprofiler
+  - bioconductor-enrichplot    # Visualizations for GSEA / ORA pathview maps
+  - bioconductor-org.ce.eg.db  # C. elegans genome annotation database
