@@ -118,8 +118,8 @@ SCORE_THRESHOLD: 0.05
 UMAP_MIN_DIST: 0.5
 
 # UMAP tSNE plot size
-UMAP_TSNE_WIDTH: 16
-UMAP_TSNE_TALL: 8
+UMAP_TSNE_WIDTH: 4
+UMAP_TSNE_TALL: 4
 
 # pseudobulk preperation variable 
 CELL_TYPE_KEY: "cell_type" # for finding the correct cell type metadata in e.g. adata.obs["cell_type"]

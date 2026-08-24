@@ -1,7 +1,7 @@
 import os
 import sys
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import gc
 import pandas as pd
 import scanpy as sc
 import seaborn as sns
@@ -56,6 +56,11 @@ else:
 # Diagnostic Plot Generation
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# A. Standalone UMAP Plot
+# -----------------------------------------------------------------------------
+umap_tsne_figsz = (snakemake.params["umap_tsne_width"], snakemake.params["umap_tsne_tall"])
+
 # assigning palettes by cluster numbers
 n_celltypes = len(adata.obs["cell_type"].cat.categories)
 celltype_palette = sns.color_palette("husl", n_colors=n_celltypes).as_hex()
@@ -63,83 +68,28 @@ celltype_palette = sns.color_palette("husl", n_colors=n_celltypes).as_hex()
 n_leiden = len(adata.obs[cluster_key].cat.categories)
 leiden_palette = sns.color_palette("husl", n_colors=n_leiden).as_hex()
 
-# Helper function to generate combined 2 x X grid plot
-def plot_grid_embedding(adata, method="umap"):
-    plot_func = sc.pl.umap if method == "umap" else sc.pl.tsne
-    obsm_key = f"X_{method}"
-    
-    if obsm_key not in adata.obsm:
-        return
-        
-    conditions = list(adata.obs["condition"].cat.categories) if "condition" in adata.obs.columns else []
-    all_panels = ["All Conditions"] + conditions
-    n_panels = len(all_panels)
-    
-    # Calculate grid dimensions (Fixed 2 rows)
-    nrows = 2
-    ncols = (n_panels + 1) // 2
-    
-    # Tighten individual panel dimensions
-    panel_w, panel_h = snakemake.params["umap_tsne_width"], snakemake.params["umap_tsne_tall"]
-    fig, axes = plt.subplots(nrows, ncols, figsize=(panel_w * ncols, panel_h * nrows))
-    axes = axes.flatten() if n_panels > 1 else [axes]
-    
-    for i, panel_name in enumerate(all_panels):
-        ax = axes[i]
-        
-        if panel_name == "All Conditions":
-            sub_adata = adata
-            title = "Annotated Lineages (All Conditions)"
-        else:
-            sub_adata = adata[adata.obs["condition"] == panel_name]
-            title = f"Annotated Lineages ({panel_name})"
-            
-        plot_func(
-            sub_adata,
-            color="cell_type",
-            title=title,
-            palette=celltype_palette,
-            legend_loc=None, # Disable scanpy's individual legend spacing
-            show=False,
-            ax=ax
-        )
-        ax.set_aspect("equal", adjustable="box")
-
-    # Hide unused subplots if total panels is odd
-    for j in range(n_panels, len(axes)):
-        fig.delaxes(axes[j])
-        
-    # Build shared legend handles matching celltype_palette
-    cell_types = list(adata.obs["cell_type"].cat.categories)
-    legend_handles = [
-        mpatches.Patch(color=color, label=ct) 
-        for ct, color in zip(cell_types, celltype_palette)
-    ]
-    
-    # Attach unified legend to far right of the overall figure
-    fig.legend(
-        handles=legend_handles,
-        title="Cell Type",
-        loc="center left",
-        bbox_to_anchor=(0.98, 0.5), # Positions legend outside right boundary
-        frameon=False,
-        fontsize=9,
-        title_fontsize=10
+if embed in ["umap", "umap&tsne"] and "X_umap" in adata.obsm:
+    # 1. Overall Cell Type UMAP
+    fig, ax = plt.subplots(figsize=umap_tsne_figsz)
+    sc.pl.umap(
+        adata,
+        color="cell_type",
+        title="Annotated Lineages (All Conditions)",
+        palette=celltype_palette,
+        legend_loc="right margin",
+        show=False,
+        ax=ax,
     )
-    
-    # Compress grid spacing and make room for right margin legend
-    plt.tight_layout(rect=[0, 0, 0.97, 1]) 
-    
-    out_path = os.path.join(plots_dir, f"{method}_celltypes_combined_grid.png")
-    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    ax.set_aspect("equal", adjustable="box")
+    plt.savefig(
+        os.path.join(plots_dir, "umap_celltypes_all.png"),
+        dpi=300,
+        bbox_inches=None,
+    )
     plt.close(fig)
 
-# -----------------------------------------------------------------------------
-# A. Combined UMAP Plot
-# -----------------------------------------------------------------------------
-if embed in ["umap", "umap&tsne"]:
-    # 1. Overall Leiden Cluster UMAP
-    fig, ax = plt.subplots(figsize=(snakemake.params["umap_tsne_width"]*2, snakemake.params["umap_tsne_tall"]))
+    # 2. Overall Leiden Cluster UMAP
+    fig, ax = plt.subplots(figsize=umap_tsne_figsz)
     sc.pl.umap(
         adata,
         color=cluster_key,
@@ -150,18 +100,63 @@ if embed in ["umap", "umap&tsne"]:
         ax=ax,
     )
     ax.set_aspect("equal", adjustable="box")
-    plt.savefig(os.path.join(plots_dir, "umap_leiden_all.png"), dpi=300, bbox_inches=None)
+    plt.savefig(
+        os.path.join(plots_dir, "umap_leiden_all.png"),
+        dpi=300,
+        bbox_inches=None,
+    )
     plt.close(fig)
 
-    # 2. Combined 2xX Cell Type UMAP Grid
-    plot_grid_embedding(adata, method="umap")
+    # 3. Individual Single-Panel UMAPs per Condition
+    if "condition" in adata.obs.columns:
+        conditions = adata.obs["condition"].cat.categories
+        for cond in conditions:
+            sub_adata = adata[adata.obs["condition"] == cond]
+
+            fig, ax = plt.subplots(figsize=umap_tsne_figsz)
+            sc.pl.umap(
+                sub_adata,
+                color="cell_type",
+                title=f"Annotated Lineages ({cond})",
+                palette=celltype_palette,
+                legend_loc="right margin",
+                show=False,
+                ax=ax,
+            )
+            ax.set_aspect("equal", adjustable="box")
+            out_path = os.path.join(plots_dir, f"umap_celltypes_cond_{cond}.png")
+            fig.savefig(out_path, bbox_inches=None, dpi=300)
+        
+        # Free memory allocations explicitly
+    plt.close(fig)
+    del sub_adata
+    gc.collect()
 
 # -----------------------------------------------------------------------------
-# B. Combined t-SNE Plot
+# B. Standalone t-SNE Plot
 # -----------------------------------------------------------------------------
-if embed in ["tsne", "umap&tsne"]:
-    # 1. Overall Leiden Cluster t-SNE
-    fig, ax = plt.subplots(figsize=(snakemake.params["umap_tsne_width"]*2, snakemake.params["umap_tsne_tall"]))
+if embed in ["tsne", "umap&tsne"] and "X_tsne" in adata.obsm:
+    # 1. Overall Cell Type t-SNE
+    fig, ax = plt.subplots(figsize=umap_tsne_figsz)
+    sc.pl.tsne(
+        adata,
+        color="cell_type",
+        title="Annotated Lineages (All Conditions)",
+        palette=celltype_palette,
+        legend_loc="right margin",
+        show=False,
+        ax=ax,
+    )
+    ax.set_aspect("equal", adjustable="box")
+    plt.savefig(
+        os.path.join(plots_dir, "tsne_celltypes_all.png"),
+        dpi=300,
+        bbox_inches=None, 
+    )
+    plt.close(fig)
+
+    # 2. Overall Leiden Cluster t-SNE
+    fig, ax = plt.subplots(figsize=umap_tsne_figsz)
     sc.pl.tsne(
         adata,
         color=cluster_key,
@@ -172,11 +167,37 @@ if embed in ["tsne", "umap&tsne"]:
         ax=ax,
     )
     ax.set_aspect("equal", adjustable="box")
-    plt.savefig(os.path.join(plots_dir, "tsne_leiden_all.png"), dpi=300, bbox_inches=None)
+    plt.savefig(
+        os.path.join(plots_dir, "tsne_leiden_all.png"),
+        dpi=300,
+        bbox_inches=None,
+    )
     plt.close(fig)
 
-    # 2. Combined 2xX Cell Type t-SNE Grid
-    plot_grid_embedding(adata, method="tsne")
+    # 3. Individual Single-Panel t-SNEs per Condition
+    if "condition" in adata.obs.columns:
+        conditions = adata.obs["condition"].cat.categories
+        for cond in conditions:
+            sub_adata = adata[adata.obs["condition"] == cond]
+
+            fig, ax = plt.subplots(figsize=umap_tsne_figsz)
+            sc.pl.tsne(
+                sub_adata,
+                color="cell_type",
+                title=f"Annotated Lineages ({cond})",
+                palette=celltype_palette,
+                legend_loc="right margin",
+                show=False,
+                ax=ax,
+            )
+            ax.set_aspect("equal", adjustable="box")
+            out_path = os.path.join(plots_dir, f"tsne_celltypes_cond_{cond}.png")
+            fig.savefig(out_path, bbox_inches=None, dpi=300)
+        
+        # Free memory allocations explicitly
+    plt.close(fig)
+    del sub_adata
+    gc.collect()
 
 # -----------------------------------------------------------------------------
 # C. Ordered / Diagonalized Marker Dot Plot
