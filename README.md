@@ -1,7 +1,28 @@
 # 10x-Toolbox
-This is a bioinformatic toolbox focusing on single cell sequencing 
-<img width="5465" height="2399" alt="tsne_celltypes_combined_grid" src="https://github.com/user-attachments/assets/8e1fb0cc-3301-4eca-aa4d-3b8c6816d96f" />
-#### tSNE plots using Parker et al (2019) C.elegans dataset (Combined, 300, 400, 500min after bleach C.elegans embryo, mixed age embryos)
+10x Toolbox is a semi-automatic analyzing workflow for single cell sequencing. It was designed to simplify complecated Bioinfo workflows into short commands, while utilizing a project specific config.yaml to record and guarantee repeatability. 
+
+* Uses Starsolo and kb_python as aligner, supports virtually all UMI-based 3' and 5' scRNA-seq protocols.
+
+* Runtime environment: Python, R, shell
+
+* Execution manager: Snakemake, Conda
+
+* Accept input format: fastq, h5, MTX, h5ad (1:1 sample or concatenated)
+
+* Main outputs: 
+    - h5ad (PCA, tSNE, UMAP embedded); 
+    - tSNE, UMAP.png;
+    - Pseudobulk DESeq2 DEG_results.csv
+    - Heatmap, Volcano_plot.pdf
+    - Enrichment result and dotplot
+
+
+
+
+##### Sample tSNE plots using Parker et al (2019) C.elegans dataset 
 
 <img width="1092" height="906" alt="Screenshot from 2026-08-23 17-37-52" src="https://github.com/user-attachments/assets/c2bc8fb8-e8a7-4e70-8afc-7de9486939e5" />
-#### Heapmap using Parker et al (2019) dataset (300min vs 400min C.elegans embryo after bleach)
+
+##### Sample Heapmap using Parker et al (2019) dataset (300min vs 400min after bleach C.elegans embryo cells)
+
+## Workflow Architecture
