@@ -26,3 +26,4 @@
 ##### Sample Heapmap using Parker et al (2019) dataset (300min vs 400min after bleach C.elegans embryo cells)
 
 ## Workflow Architecture
+<img width="763" height="962" alt="10x Toolbox scRNA flow chart drawio" src="https://github.com/user-attachments/assets/ed05578d-a5ae-4269-925e-516ee8946868" />
