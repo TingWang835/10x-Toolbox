@@ -10,18 +10,19 @@
 
 ## Workflow Architecture
 10x Toolbox accepts input format: fastq, h5, MTX, h5ad (1:1 sample or concatenated)
-And outputs analyzed plots and files including: 
-    - PCA, tSNE, UMAP embedded h5ad; 
-    - tSNE, UMAP.png;
-    - Pseudobulk DESeq2 DEG_results.csv;
-    - Heatmap, Volcano_plot.pdf;
-    - Enrichment result and dotplot;
+And outputs analyzed plots and files including: \
+    - PCA, tSNE, UMAP embedded h5ad \ 
+    - tSNE, UMAP.png \
+    - Pseudobulk DESeq2 DEG_results.csv \
+    - Heatmap, Volcano_plot.pdf \
+    - Enrichment result and dotplot \
 
 Hereunder is a simplified flow chart for the workflow's Architecture
 <img width="763" height="962" alt="10x Toolbox scRNA flow chart drawio" src="https://github.com/user-attachments/assets/aa2c82d6-d4e7-4276-a6d6-94154aa80b89" />
 
 ## Reproducibility
-<img width="300" height="100" alt="Untitled Diagram drawio" src="https://github.com/user-attachments/assets/4b2f8b1f-08cf-4840-b32f-7342e4ddc9fa" />
+<img width="692" height="285" alt="Untitled Diagram drawio" src="https://github.com/user-attachments/assets/7d03508c-3a8e-40db-b9a2-5395c6336545" />
+
 
 10x Toolbox applies reproducibility controls by using 3 separate files:
 1. `reads/project_name/runinfo.csv`
