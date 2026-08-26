@@ -11,7 +11,7 @@
 ## Workflow Architecture
 10x Toolbox accepts input format: `fastq`, `h5`, `MTX`, `h5ad` (1:1 sample or concatenated) \
 And outputs analyzed plots and files including: \
-    - PCA, tSNE, UMAP embedded h5ad \ 
+    - PCA, tSNE, UMAP embedded h5ad  \ 
     - tSNE, UMAP.png \
     - Pseudobulk DESeq2 DEG_results.csv \
     - Heatmap, Volcano_plot.pdf \
