@@ -1,5 +1,5 @@
 # 10x-Toolbox
-10x Toolbox is a semi-automatic analyzing workflow for single cell sequencing. It was designed to simplify complecated Bioinfo workflows into short commands, while utilizing a project specific config.yaml to record and guarantee repeatability. 
+10x Toolbox is a semi-automatic analyzing workflow for single cell sequencing. It was designed to simplify complicated Bioinfo workflows into short commands, while utilizing a project specific config.yaml to record and guarantee repeatability. 
 
 * Uses Starsolo and kb_python as aligner, supports virtually all UMI-based 3' and 5' scRNA-seq protocols.
 
@@ -7,17 +7,38 @@
 
 * Execution manager: Snakemake, Conda
 
-* Accept input format: fastq, h5, MTX, h5ad (1:1 sample or concatenated)
 
-* Main outputs: 
-    - h5ad (PCA, tSNE, UMAP embedded); 
+## Workflow Architecture
+10x Toolbox accepts input format: fastq, h5, MTX, h5ad (1:1 sample or concatenated)
+And outputs analyzed plots and files including: 
+    - PCA, tSNE, UMAP embedded h5ad; 
     - tSNE, UMAP.png;
-    - Pseudobulk DESeq2 DEG_results.csv
-    - Heatmap, Volcano_plot.pdf
-    - Enrichment result and dotplot
+    - Pseudobulk DESeq2 DEG_results.csv;
+    - Heatmap, Volcano_plot.pdf;
+    - Enrichment result and dotplot;
+
+Hereunder is a simplified flow chart for the workflow's Architecture
+<img width="763" height="962" alt="10x Toolbox scRNA flow chart drawio" src="https://github.com/user-attachments/assets/aa2c82d6-d4e7-4276-a6d6-94154aa80b89" />
+
+## Reproducibility
+<img width="300" height="100" alt="Untitled Diagram drawio" src="https://github.com/user-attachments/assets/4b2f8b1f-08cf-4840-b32f-7342e4ddc9fa" />
+
+10x Toolbox applies reproducibility controls by using 3 separate files:
+1. `reads/project_name/runinfo.csv`
+   - Records experiment Run_number, Sample_name and other metadata.
+   - Controls which sample/run should be processed in the workflow.
+2. `reads/project_name/config.yaml`
+   - Records project specific config variables for each module.
+   - Controls results by applying the same analysis variables when repeated.
+   - Allows instance switching between projects.
+3. `env/module.yaml`
+   - Contains env.yaml for each individual module.
+   - controls package versions.
 
 
+## Output Showcase
 
+<img width="5465" height="2399" alt="tsne_celltypes_combined_grid" src="https://github.com/user-attachments/assets/d561da8f-c388-49a9-9a0a-4bf22c2c4edb" />
 
 ##### Sample tSNE plots using Parker et al (2019) C.elegans dataset 
 
@@ -25,5 +46,6 @@
 
 ##### Sample Heapmap using Parker et al (2019) dataset (300min vs 400min after bleach C.elegans embryo cells)
 
-## Workflow Architecture
-<img width="763" height="962" alt="10x Toolbox scRNA flow chart drawio" src="https://github.com/user-attachments/assets/ed05578d-a5ae-4269-925e-516ee8946868" />
+
+
+
