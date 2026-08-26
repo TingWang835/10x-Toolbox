@@ -9,13 +9,13 @@
 
 
 ## Workflow Architecture
-10x Toolbox accepts input format: fastq, h5, MTX, h5ad (1:1 sample or concatenated)
+10x Toolbox accepts input format: `fastq`, `h5`, `MTX`, `h5ad` (1:1 sample or concatenated)
 And outputs analyzed plots and files including: \
     - PCA, tSNE, UMAP embedded h5ad \ 
     - tSNE, UMAP.png \
     - Pseudobulk DESeq2 DEG_results.csv \
     - Heatmap, Volcano_plot.pdf \
-    - Enrichment result and dotplot \
+    - Enrichment result and dotplot 
 
 Hereunder is a simplified flow chart for the workflow's Architecture
 <img width="763" height="962" alt="10x Toolbox scRNA flow chart drawio" src="https://github.com/user-attachments/assets/aa2c82d6-d4e7-4276-a6d6-94154aa80b89" />
