@@ -3,6 +3,34 @@ localrules:
 # =============================================================================
 # Download Sample data
 # =============================================================================
+checkpoint fetch_sra_metadata:
+    """
+    Fetches SRA runinfo CSV using NCBI Entrez Direct (esearch + efetch).
+    """
+    output:
+        csv = f"{READS_DIR}/runinfo.csv"
+    log:
+        f"{LOG_DIR}/getdata/fetch_sra_metadata.log"
+    conda:
+        "../env/scrna_getdata.yaml"
+    params:
+        prj = config.get("PRJNUMBER")
+    shell:
+        """
+        exec 2> {log}
+        mkdir -p {READS_DIR}
+        mkdir -p $(dirname {log})
+
+        # Fetch SRA runinfo directly in CSV format
+        esearch -db sra -query "{params.prj}" | efetch -format runinfo > {READS_DIR}/raw_runinfo.csv
+
+        # Remove empty lines or header collisions if any
+        head -n 1 {READS_DIR}/raw_runinfo.csv > {output.csv}
+        grep -v "^Run," {READS_DIR}/raw_runinfo.csv >> {output.csv} || true
+        rm {READS_DIR}/raw_runinfo.csv
+        """
+
+
 rule parse_scrna_metadata:
     """
     Parses global runinfo.csv to filter single-cell RNA-seq runs,
@@ -11,7 +39,7 @@ rule parse_scrna_metadata:
     input:
         csv = f"{READS_DIR}/runinfo.csv"
     output:
-        csv = f"{READS_DIR}/runinfo_scrna.csv"
+        csv = f"{READS_DIR}/sra_runinfo.csv"
     log:
         f"{LOG_DIR}/getdata/parse_scrna_metadata.log"
     run:

@@ -5,13 +5,8 @@ refs/
 note.txt
 databases/
 dev_envs/
-toolbox/geo_extraction.smk
 toolbox/scripts/__pycache__
 
 
-toolbox/geo_extraction.smk
-toolbox/getdata.smk
-toolbox/qc.smk
-toolbox/rna_aligner.smk
-toolbox/rna_diff_exp.smk
-runinfo_cond.sh
+
+
