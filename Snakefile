@@ -44,6 +44,9 @@ acc = ref_cfg.get("ACC") or "GCF_000848505.1"
 species_low = species.replace(" ", "_")
 species_cap = species_low.capitalize()
 
+# Datasource for reads download or ingest
+datasource = config.get("DATASOURCE", "local_fastq").lower()
+
 # Paths
 REFS_DIR = f"refs/{source}/{species_low}/{assembly}/{release}"
 READS_DIR = f"reads/{PRJNAME}"
@@ -87,37 +90,34 @@ def get_refs(wildcards):
 # scRNA-seq Helper Functions
 # =============================================================================
 def get_scrna_runinfo(wildcards):
-    """
-    Triggers the appropriate metadata checkpoint and returns the filtered 
-    scRNA run accessions based on the configured datasource.
-    """
-    datasource = config["DATASOURCE"].lower()
-
-    if datasource == "sra":
-        # Evaluates SRA metadata checkpoint
-        checkpoints.fetch_sra_metadata.get(**wildcards)
-        csv_path = f"{READS_DIR}/sra_runinfo.csv"
-
+    if datasource =="sra":
+        return f"{READS_DIR}/sra_runinfo.csv"
     elif datasource == "local_fastq":
-        # Evaluates local Illumina processing checkpoint
-        checkpoints.process_illumina_local.get(**wildcards)
-        csv_path = f"{READS_DIR}/local_runinfo.csv"
-
+        return f"{READS_DIR}/local_fastq_runinfo.csv"
+    elif datasource == "local_concat_h5ad":
+        return f"{READS_DIR}/local_concat_runinfo.csv"
+    elif datasource == "local_indiv_h5ad":
+        return f"{READS_DIR}/local_indiv_runinfo.csv"
+    elif datasource == "local_raw_h5_mtx":
+        return f"{READS_DIR}/local_h5mtx_runinfo.csv"
     else:
-        raise ValueError(f"Invalid DATASOURCE '{datasource}' specified in config. Expected 'sra' or 'local_fastq'.")
+        raise ValueError(f"Invalid DATASOURCE option: '{datasource}'")
 
-    # Read dynamically created metadata CSV
-    return csv_path
 
 def get_scrna_fastq(wildcards):
     """Generates QC report targets, merge by multiqc and forces fastq trimming."""
     runinfo_df = pd.read_csv(f"{READS_DIR}/runinfo_scrna.csv")
     runs = runinfo_df["Run"].astype(str).str.strip().unique().tolist()
-    return [
-        ancient(f"{READS_DIR}/fastqs/{r}_{pair}.fastq.gz")
-        for r in runs
-        for pair in [1, 2]
-    ]
+    
+    if datasource =="sra":
+        return [
+            ancient(f"{READS_DIR}/fastqs/{r}_{pair}.fastq.gz")
+            for r in runs
+            for pair in [1, 2]
+        ]
+    else:
+        raise ValueError(f"'{datasource}' is invalid or is local, no downloading needed.")
+
 
 def get_scrna_qc(wildcards):
     """Run fastqc and multiqc"""
@@ -205,8 +205,8 @@ def get_scrna_enrich(wildcards):
 # Include Modular Rule Files
 # =============================================================================
 include: "toolbox/get_refs.smk"
-include: "toolbox/scrna_getdata_sra.smk"
-include: "toolbox/scrna_getdata_local.smk"
+include: "toolbox/scrna_getdata.smk"
+include: "toolbox/scrna_qc.smk"
 include: "toolbox/scrna_aligner.smk" 
 include: "toolbox/scrna_h5ad_preprocess.smk" 
 include: "toolbox/scrna_annotation.smk" 
@@ -222,17 +222,21 @@ rule note:
         print("\n" + "="*50)
         print("THIS SNAKEFILE SERVES AS TERMINAL FOR BIOINFORMATIC TOOLBOX")
         print("Please specify a target rule:")
-        print("  snakemake download_refs     - Download fa, gff3 and gtf files")
-        print("  snakemake scrna_getdata     - Acquire scRNA-Seq dataset")
-        print("  snakemake qc                - run QC")
-        print("RNAseq Analysis")
-        print("  snakemake rna_align         - Run RNA alignment")
-        print("  snakemake rna_exp           - Run RNA expression analysis")
-        print("  snakemake exp_tools_compare - (optional) Compare expression analysis tools deseq2 vs edger")
-        print("  snakemake rna_report        - Evaluate expression data with pca, MA, p-value histagram and volcano plots,")
-        print("                                generate csv for list of significantly different expressed genes")
-        print("  snakemake rna_enrich        - Generate heatmap and perform functional enrichment study")
-        print("  snakemake rna_all           - Gets samples and refs, run QC, rna align, exp, report and enrich")
+        print("Universal Functions")
+        print("  snakemake download_refs      - Download fa, gff3 and gtf files")
+  
+        print("scRNAseq Analysis")
+        print("  snakemake scrna_fastqs       - Download SRA fastq dataset")
+        print("  snakemake scrna_qc           - run fastQC and MultiQC")
+        print("  snakemake scrna_align        - Alignment with Starsolo or kb_python, group and convert individual MTX to h5ad")
+        print("  snakemake scrna_preprocess   - Preprocess include QC, filter, normalize, HVG, PCA, concat, batch correction, embed")
+        print("  snakemake scran_annotation   - Characterize clusters based on marker + plot characterized UMAP and/or tSNE")
+        print("    snakemake scrna_anno_cal   - Subdivision of scrna_annotation, run only characterization")
+        print("    snakemake_scrna_anno_plot  - Subdivision of scrna_annotation, run only plotting")
+        print("  snakemake scrna_pseudobulk   - Prep for pseudobulk, Compute DEG by DESeq2")
+        print("  snakemake scrna_degplot      - Generate Heatmap and Volcano plots")
+        print("  snakemake scrna_enrich       - Perform functional enrichment study")
+        print("  snakemake scrna_all          - Run all comands in consequence")
         print("="*50 + "\n")
 
 
@@ -247,7 +251,7 @@ rule download_refs:
 # scRNA-Seq Analysis
 # =============================================================================
 rule scrna_runinfo:
-    """Download runinfo.csv or create one from fastq files under reads/project_name/rawdata"""
+    """Consolidates source runinfo to standard runinfo_scrna.csv"""
     input:
         get_scrna_runinfo
     output:
