@@ -226,6 +226,7 @@ rule note:
         print("  snakemake download_refs      - Download fa, gff3 and gtf files")
   
         print("scRNAseq Analysis")
+        print("  snakemake scrna_runinfo      - Prepare runinfo.csv, move local ingests to respective paths")
         print("  snakemake scrna_fastqs       - Download SRA fastq dataset")
         print("  snakemake scrna_qc           - run fastQC and MultiQC")
         print("  snakemake scrna_align        - Alignment with Starsolo or kb_python, group and convert individual MTX to h5ad")
