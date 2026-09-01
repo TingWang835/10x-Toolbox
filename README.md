@@ -1,5 +1,5 @@
 # 10x-Toolbox
-10x Toolbox is a semi-automatic analyzing workflow for single cell sequencing. It is my personal project to simplify complicated Bioinformatics workflows into short commands, while learning in practice of the repective analytic skills. 
+10x Toolbox is a semi-automatic analyzing workflow for single cell sequencing. It is my personal project to simplify complicated Bioinformatics workflows into short commands, while learning and practicing of the underlying analytic skills with actual dataset. 
 
 * Uses Starsolo and kb_python as aligner, supports virtually all UMI-based 3' and 5' scRNA-seq protocols.
 
