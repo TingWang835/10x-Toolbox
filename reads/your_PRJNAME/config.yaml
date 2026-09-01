@@ -5,23 +5,8 @@
 # General Variables
 # =============================================================================
 
-#PRJN number (only used in getdata_sra)
-PRJNUMBER: "PRJNA523834"
-
 # Project name 
-PRJNAME: "scrna_packer_2019"
-
-# =============================================================================
-# scrna_getdata.smk specific variables
-# =============================================================================
-# choose Data source for LOCAL or SRA 
-# LOCAL: create a runinfo.csv from items under reads/{PRJNAME}
-# SRA: if runinfo.csv exist: download SRRs from runinfo.csv, else query for runinfo.csv from SRA metadata
-DATASOURCE: "SRA"
-
-# Assign Fastq suffix for correct identification (e.g. _1.fastq.gz _2.fastq.gz)
-CB_UMI_SUFFIX: "1"  # Illumina default 1
-CDNA_SUFFIX: "2"    # Illumina default 2
+PRJNAME: "your_PRJNAME"
 
 # =============================================================================
 # Ref variables 
@@ -33,6 +18,24 @@ REF:
   ASSEMBLY: "WBcel235" # e.g. ncbi: GRCh38, ensembl: R64-2-1
   RELEASE: "38" # ncbi: p14 (patch #), ensemble: 83
   ACC: "" # leave empty for ensembl
+  
+# =============================================================================
+# scrna_getdata.smk specific variables
+# =============================================================================
+# choose Data source 
+# sra: download runinfo.csv based on PRJNUMBER from SRA website, use it as guide;
+# local_fastq: running fastq files from reads/{PRJNAME}/rawdata, generate runinfo.csv using file name (illumina naming standard);
+# local_concat_h5ad: for local concat and batch corrected h5ad, 
+# local_indiv_h5ad: for local individual h5ad
+# local_raw_h5_mtx: for local MTX or h5 file ingestion.
+DATASOURCE: "local_fastq"
+
+#PRJN number (optional) only used when DATASOURCE = sra, leave blank for others
+PRJNUMBER: "PRJNA523834"
+
+# Assign Fastq suffix for correctly identificating the content (e.g. _1.fastq.gz for CB + UMI _2.fastq.gz for cDNA)
+CB_UMI_SUFFIX: "1"  # Illumina default 1
+CDNA_SUFFIX: "2"    # Illumina default 2
 
 
 
@@ -68,7 +71,6 @@ SOLO_EXPECTED_CELLS: 3000  # typical range from 500~10000
 SOLO_MAX_PERCENTILE: 0.99
 SOLO_MAX_MIN_RATIO: 10
 
-
 # ------------------------------------------------
 #(optional) Kallisto variables
 # ------------------------------------------------
@@ -88,7 +90,7 @@ QC_MAX_PCT_MITO: 15.0   # cells with unique Mitochrondria gene >15.0% (potential
 # normalize and HVG selection variables
 NORM_TARGET_SUM: 10000      # normalized to counts per: 10000 (default) or None (Scanpy take medium across samples)
 HVG_N_TOP_GENES: 2000        # select the top 2000 highly variable genes for noise reduction
-HVG_FLAVOR: "seurat"         # available choice: "seurat", "cell_ranger" | "seurat_v3" and "pearson_residuals" needs un-logged input
+HVG_FLAVOR: "seurat"         # option: "seurat", "cell_ranger" | "seurat_v3" and "pearson_residuals" needs un-logged input
 
 # Concat and PCA variables
 Z_CAP: 10             # Z-Score cap to prevent extreme expression bias
@@ -101,8 +103,6 @@ BATCH_METHOD: "harmony"  # Options: "harmony", "bbknn", "scvi"
 # Cluster plots variables 
 EMBED: "umap&tsne"  # Option "tsne", "umap", "umap&tsne" choose which 2D projection data to enbed in h5ad
 N_NEIGHBOR: 15
-
-
 
 
 
