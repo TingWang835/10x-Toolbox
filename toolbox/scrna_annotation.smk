@@ -30,7 +30,8 @@ rule scrna_annotation_plots:
     """
     input:
         h5ad=f"{READS_DIR}/annotation/{{aligner}}/annotated.h5ad",
-        markers_csv=f"{READS_DIR}/annotation/{{aligner}}/reports/marker_genes.csv"
+        markers_csv=f"{READS_DIR}/annotation/{{aligner}}/reports/marker_genes.csv",
+        runinfo = f"{READS_DIR}/runinfo_scrna.csv"
     output:
         plots_dir=directory(f"{READS_DIR}/annotation/{{aligner}}/umap_tsne_plots")
     log:

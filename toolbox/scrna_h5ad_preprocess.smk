@@ -70,7 +70,6 @@ rule scrna_batch_and_embed:
     """
     input:
         h5ad=f"{READS_DIR}/h5ad/{{aligner}}/pca_concat.h5ad",
-        runinfo = f"{READS_DIR}/runinfo_scrna.csv"
     output:
         embedding_h5ad=f"{READS_DIR}/h5ad/{{aligner}}/pca_concat_batch_embed.h5ad",
     log:
