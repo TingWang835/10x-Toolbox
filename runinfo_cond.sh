@@ -15,6 +15,7 @@ awk -F, '
 BEGIN {
     OFS=","
     # --- DEFINE YOUR CATEGORIES HERE ---
+    # cond[sample_name]="treatment_condition"
     cond["GSM3618670"]="300min"
     cond["GSM3618671"]="400min"
     cond["GSM3618672"]="500min_1"

@@ -185,7 +185,7 @@ def get_scrna_anno_cal(wildcards):
 
 def get_scrna_anno_plot(wildcards):
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
-    return f"{READS_DIR}/annotation/{scrna_aligner}/plots"
+    return f"{READS_DIR}/annotation/{scrna_aligner}/umap_tsne"
 
 def get_scrna_pseudobulk(wildcards):
     scrna_aligner = config.get("SCRNA_ALIGNER", "starsolo").lower()
@@ -223,21 +223,21 @@ rule note:
         print("THIS SNAKEFILE SERVES AS TERMINAL FOR BIOINFORMATIC TOOLBOX")
         print("Please specify a target rule:")
         print("Universal Functions")
-        print("  snakemake download_refs      - Download fa, gff3 and gtf files")
+        print("  download_refs      - Download fa, gff3 and gtf files")
   
         print("scRNAseq Analysis")
-        print("  snakemake scrna_runinfo      - Prepare runinfo.csv, move local ingests to respective paths")
-        print("  snakemake scrna_fastqs       - Download SRA fastq dataset")
-        print("  snakemake scrna_qc           - run fastQC and MultiQC")
-        print("  snakemake scrna_align        - Alignment with Starsolo or kb_python, group and convert individual MTX to h5ad")
-        print("  snakemake scrna_preprocess   - Preprocess include QC, filter, normalize, HVG, PCA, concat, batch correction, embed")
-        print("  snakemake scran_annotation   - Characterize clusters based on marker + plot characterized UMAP and/or tSNE")
-        print("    snakemake scrna_anno_cal   - Subdivision of scrna_annotation, run only characterization")
-        print("    snakemake_scrna_anno_plot  - Subdivision of scrna_annotation, run only plotting")
-        print("  snakemake scrna_pseudobulk   - Prep for pseudobulk, Compute DEG by DESeq2")
-        print("  snakemake scrna_degplot      - Generate Heatmap and Volcano plots")
-        print("  snakemake scrna_enrich       - Perform functional enrichment study")
-        print("  snakemake scrna_all          - Run all comands in consequence")
+        print("  scrna_runinfo      - Prepare runinfo.csv, move local ingests to respective paths")
+        print("  scrna_fastqs       - Download SRA fastq dataset")
+        print("  scrna_qc           - run fastQC and MultiQC")
+        print("  scrna_align        - Alignment with Starsolo or kb_python, group and convert individual MTX to h5ad")
+        print("  scrna_preprocess   - Preprocess include QC, filter, normalize, HVG, PCA, concat, batch correction, embed")
+        print("  scran_annotation   - Characterize clusters based on marker + plot characterized UMAP and/or tSNE")
+        print("    scrna_anno_cal   - Subdivision of scrna_annotation, run only characterization")
+        print("    scrna_anno_plot  - Subdivision of scrna_annotation, run only plotting")
+        print("  scrna_pseudobulk   - Prep for pseudobulk, Compute DEG by DESeq2")
+        print("  scrna_degplot      - Generate Heatmap and Volcano plots")
+        print("  scrna_enrich       - Perform functional enrichment study")
+        print("  scrna_all          - Run all comands in consequence")
         print("="*50 + "\n")
 
 
