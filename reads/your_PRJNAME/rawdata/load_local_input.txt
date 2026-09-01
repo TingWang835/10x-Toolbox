@@ -1,0 +1,4 @@
+You can load local inputs in this folder (accepts: fastq, h5, mtx, invidual and preprocessed_concat h5ad) .
+Original files will be kept after their copies had been moved to respective folders.
+runinfo.csv will be downloaded or generated automatically.
+
