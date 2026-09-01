@@ -110,27 +110,9 @@ if embed in ["tsne", "umap&tsne"]:
     print("Calculating t-SNE coordinates...")
     sc.tl.tsne(adata, use_rep=use_rep, n_jobs=snakemake.threads)
 
-# =============================================================================
-# 3. Create obs["condition"] column based on sample_name
-# =============================================================================
-# Load runinfo metadata table
-runinfo = pd.read_csv(snakemake.input["runinfo"])
 
-# Build fallback lookup mapping for both Run and SampleName identifiers
-run_to_cond = dict(zip(runinfo["SampleName"], runinfo["condition"]))
-
-# Assign condition metadata column
-adata.obs["condition"] = (
-    adata.obs["sample_name"].map(run_to_cond).astype("category")
-)
-
-# Verify no NaN values were introduced during mapping
-if adata.obs["condition"].isna().any():
-    print(
-        "Warning: Some sample_ids could not be mapped to a condition in runinfo!"
-    )
 # =============================================================================
-# 4. Save Final Integrated AnnData Target
+# 3. Save Final Integrated AnnData Target
 # =============================================================================
 print(f"Writing integrated AnnData object to {snakemake.output['embedding_h5ad']}...")
 adata.write_h5ad(snakemake.output["embedding_h5ad"])

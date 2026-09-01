@@ -23,6 +23,44 @@ os.makedirs(
 )
 
 # =============================================================================
+# 3. Create obs["condition"] column based on sample_name
+# =============================================================================
+# Load runinfo metadata table
+runinfo = pd.read_csv(snakemake.input["runinfo"])
+
+# Build fallback lookup mapping for both Run and SampleName identifiers
+run_to_cond = dict(zip(runinfo["SampleName"], runinfo["condition"]))
+
+# Assign condition metadata column
+adata.obs["condition"] = (
+    adata.obs["sample_name"].map(run_to_cond).astype("category")
+)
+
+# Verify no NaN values were introduced during mapping
+if adata.obs["condition"].isna().any():
+    print(
+        "Warning: Some sample_ids could not be mapped to a condition in runinfo!"
+    )
+
+
+# =============================================================================
+# Assign Condition Metadata
+# =============================================================================
+# Map SampleName (or Run) to condition
+run_to_cond = dict(zip(runinfo["SampleName"], runinfo["condition"]))
+
+# Fallback check to match either sample_name or batch keys in obs
+sample_key = "sample_name" if "sample_name" in adata.obs else "batch"
+
+if sample_key in adata.obs:
+    adata.obs["condition"] = (
+        adata.obs[sample_key].map(run_to_cond).astype("category")
+    )
+    if adata.obs["condition"].isna().any():
+        print("Warning: Unmapped samples detected when assigning conditions!")
+
+
+# =============================================================================
 # 1. Community Detection (Leiden Clustering)
 # =============================================================================
 print(f"Running Leiden clustering at resolution {resolution}...")
